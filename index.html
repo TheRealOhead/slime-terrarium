@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="style.css">
+		<title></title>
+	</head>
+	<body>
+		<fieldset>
+			<legend>Terrariums</legend>
+			<div id="terrarium-container"></div>
+		</fieldset>
+		Select slime:
+		<select id="slime-info-selector">
+		</select>
+		<fieldset>
+			<legend><input type="text" id="slime-info-name" value="Slime name"></legend>
+			Mass: <span id="slime-info-mass">-</span><br>
+			<button id="slime-info-split">Split</button><br>
+			<button id="slime-info-sell-button">Sell ($<span id="slime-info-sell-price">-</span>)</button>
+		</fieldset>
+		<fieldset>
+			<legend>Shop</legend>
+			<span id="shop-money"></span>
+			<div id="shop-container"></div>
+		</fieldset>
+
+		<script src="slimeNames.js"></script>
+		<script src="vector.js"></script>
+		<script src="bellCurve.js"></script>
+		<script src="agar.js"></script>
+		<script src="slime.js"></script>
+		<script src="terrarium.js"></script>
+		<script src="main.js"></script>
+		<script src="uiControllers.js"></script>
+	</body>
+</html>
