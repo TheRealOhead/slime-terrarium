@@ -5,6 +5,7 @@ const ui = {
 	splitButton: document.getElementById('slime-info-split'),
 	sellButton: document.getElementById('slime-info-sell-button'),
 	sellPrice: document.getElementById('slime-info-sell-price'),
+	typeDescription: document.getElementById('slime-info-type-description'),
 
 	money: document.getElementById('shop-money')
 }
@@ -39,6 +40,7 @@ function updateReadOnly() {
 	ui.mass.innerHTML = currentSlime ? Math.round(currentSlime.mass * 100) / 100 : '-';
 	ui.money.innerHTML = `$${money}`;
 	ui.sellPrice.innerHTML = currentSlime ? currentSlime.getSellPrice() : '-';
+	ui.typeDescription.innerHTML = currentSlime ? currentSlime.type.desc : '';
 }
 
 ui.selector.addEventListener('change', () => {
