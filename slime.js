@@ -54,20 +54,21 @@ const slimeTypes = {
 		]
 	},
 	'pink': {
-		desc: 'Little ones that don\'t tend to sell for very much money...',
+		desc: 'These little guys cause other slimes to grow faster',
 		color: {
 			hue: 321,
 			saturation: 65,
 			brightness: 63
 		},
 		growth: {
-			scale: 500,
+			scale: 50,
 			standardDeviation: 10,
 			mean: 20
 		},
 		mutationChances: [
 			['pink', 1]
-		]
+		],
+		sellMultiplier: 0
 	},
 	'red': {
 		desc: 'Red slimes grow very slowly, but seem to be unbounded in their growth',
@@ -100,7 +101,7 @@ class Slime {
 		Slime.slimesById[this.id] = this;
 
 		this.terrarium = terrarium;
-		terrarium.slimes.add(this);
+		this.terrarium.slimes.add(this);
 		this.typeName = type;
 		this.type = type = slimeTypes[type];
 
@@ -110,12 +111,14 @@ class Slime {
 
 		this.name = this.chooseName();
 
-		this.position = terrarium.getDimensions().multiply(.5);
+		this.position = this.terrarium.getDimensions().multiply(.5);
 		this.headPosition = this.position.clone();
 
 		this.velocity = new Vector(0, 0);
 
 		this.grounded = false;
+
+		this.growthRate = 0;
 
 		this.startJumpTimer();
 
@@ -130,18 +133,46 @@ class Slime {
 		this.jumpTimer = 120 + Math.random() * 120;
 	}
 
-	update() {
+	getGrowthRate() {
 		let growth = this.type.growth;
-		this.mass += bellCurve(this.mass, growth.scale, growth.standardDeviation, growth.mean);
+		return bellCurve(this.mass, growth.scale, growth.standardDeviation, growth.mean) * this.terrarium.growthMultiplier;
+	}
+
+	updateGrowthRate() {
+		this.growthRate = this.getGrowthRate();
+	}
+
+	update() {
+		this.updateGrowthRate();
+		this.mass += this.growthRate;
 	}
 
 	getSellPrice() {
-		return Math.floor(this.mass / 4);
+		let multiplier = 1;
+		if (this.type.sellMultiplier !== undefined) multiplier = this.type.sellMultiplier;
+		return Math.floor(this.mass / 4) * multiplier;
+	}
+
+	getBoundingBox() {
+		return [
+			new Vector(this.position.x - this.mass/2, this.headPosition.y - this.mass/4.5),
+			new Vector(this.position.x + this.mass/2, this.position.y + this.mass/3)
+		]
 	}
 
 	draw() {
+		let ctx = this.terrarium.canvas.context;
 		let dimensions = this.terrarium.getDimensions();
 		let floor = dimensions.y * (3 / 4);
+		let boundingBox = this.getBoundingBox();
+		let topLeft = boundingBox[0];
+		let bottomRight = boundingBox[1];
+
+		// Debug draw bounding box
+		//ctx.fillStyle = '#f0f';
+		//ctx.fillRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, 1);
+		//ctx.fillRect(topLeft.x, topLeft.y, 1, bottomRight.y - topLeft.y);
+
 
 		// Move
 		this.position = this.position.add(this.velocity);
@@ -163,7 +194,8 @@ class Slime {
 
 		// Jumps
 		this.jumpTimer--;
-		if (this.jumpTimer <= 0 && this.grounded) {
+		if (!this.grounded) this.startJumpTimer();
+		if (this.jumpTimer <= 0) {
 			this.velocity = new Vector(Math.random() * 4 - 2, -5);
 			this.startJumpTimer();
 		}
@@ -171,13 +203,18 @@ class Slime {
 		// Bounce against sides of terrarium
 		if (this.position.x < 0) {
 			this.velocity.x = Math.abs(this.velocity.x);
+			this.handleSideHit();
 		}
 		if (this.position.x > dimensions.x) {
 			this.velocity.x = -Math.abs(this.velocity.x);
+			this.handleSideHit();
+		}
+		if (this.position.y < 0) {
+			this.velocity.y = Math.abs(this.velocity.y);
+			this.handleSideHit();
 		}
 
 		// Drawing stuff
-		let ctx = this.terrarium.canvas.context;
 		let c = this.color;
 		let p = this.position;
 		let head = this.headPosition;
@@ -185,15 +222,16 @@ class Slime {
 		
 		let metaballScale = (this.mass / 5);
 
-		for (let y = 0; y < dimensions.y; y++) {
-			for (let x = 0; x < dimensions.x; x++) {
-				let metaballValue = metaballScale / Math.sqrt((x - p.x)**2 + (y - p.y)**2) + (metaballScale / 2) / Math.sqrt((x - head.x)**2 + (y - head.y)**2);
+		for (let y = Math.floor(topLeft.y); y < bottomRight.y; y++) {
+			for (let x = Math.floor(topLeft.x); x < bottomRight.x; x++) {
+				
+				let metaballValue = metaballScale / Math.sqrt((.5*(x - p.x))**2 + (.8*(y - p.y))**2) + (metaballScale / 2) / Math.sqrt((x - head.x)**2 + (y - head.y)**2);
 
 				if (1 <= metaballValue) {
 					if (1.1 <= metaballValue) {
 						ctx.fillStyle = `hsl(${c.hue}deg,${c.saturation}%,${c.brightness}%)`
 					} else {
-						ctx.fillStyle = currentSlime == this ? 'yellow' : 'gray';
+						try {ctx.fillStyle = currentSlime == this ? 'yellow' : 'gray'} catch {ctx.fillStyle = 'gray'};
 					}
 					ctx.fillRect(x, y, 1, 1);
 				}
@@ -202,6 +240,11 @@ class Slime {
 
 		// Update head position
 		this.headPosition = this.headPosition.multiply(1).add(this.position.add(new Vector(0, -metaballScale * 2))).multiply(1/2);
+	}
+
+	handleSideHit() {
+		let speed = this.velocity.getMagnitude();
+		if (speed > 20) this.split();
 	}
 
 	drawText() {
@@ -214,7 +257,8 @@ class Slime {
 			let yOffset = 0;
 
 			ctx.fillText(`${this.name}`, this.position.x, this.position.y + yOffset);
-			ctx.fillText(`Mass: ${Math.floor(this.mass)}`, this.position.x, this.position.y + (yOffset += 25));
+			ctx.fillText(`Mass: ${Math.round(this.mass)}`, this.position.x, this.position.y + (yOffset += 25));
+			ctx.fillText(`Growth rate: ${Math.round(this.growthRate * 100) / 100}`, this.position.x, this.position.y + (yOffset += 25));
 		}
 	}
 
@@ -251,8 +295,8 @@ class Slime {
 
 		daughters[0].position = daughters[1].position = this.headPosition;
 
-		daughters[0].velocity = new Vector(-1, -.5);
-		daughters[1].velocity = new Vector(1, -.5);
+		daughters[0].velocity = this.velocity.multiply(.5).add(new Vector(-1, -.5));
+		daughters[1].velocity = this.velocity.multiply(.5).add(new Vector( 1, -.5));
 
 		daughters[0].color.saturation += Math.random() - .5;
 		daughters[1].color.brightness += Math.random() - .5;

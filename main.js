@@ -12,6 +12,13 @@ requestAnimationFrame(draw);
 
 // Tick every 5 seconds
 setInterval(() => {
+
+	// Update terrariums
+	Terrarium.terrariums.forEach(terrarium => {
+		terrarium.update();
+	})
+
+	// Update slimes
 	Slime.slimes.forEach(slime => {
 		slime.update();
 	})
@@ -21,4 +28,5 @@ setInterval(() => {
 
 // Debug
 let terrarium = new Terrarium('Normal Terrarium', 'normal');
-new Slime('blue', terrarium, 100);
+new Slime('red', terrarium).mass = 150;
+new Slime('pink', terrarium);

@@ -15,4 +15,8 @@ class Vector {
 	clone() {
 		return new Vector(this.x, this.y);
 	}
+
+	getMagnitude() {
+		return Math.sqrt(this.x**2 + this.y**2);
+	}
 }
